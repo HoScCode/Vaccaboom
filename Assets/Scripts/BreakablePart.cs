@@ -2,42 +2,59 @@ using UnityEngine;
 
 public class BreakablePart : MonoBehaviour
 {
-    public float breakForce = 2f;
+    private float timeWhenStopped = -1f;
+    private bool isAtRest = false;
+    private bool kinematicSet = false;
 
+    public float breakForce = 2f;
     private bool hasBroken = false;
     private float massOverride = 0.5f;
     private bool applyImpulse = true;
     private GameObject lastHitPlayer = null;
-    private float restTime = 0f;
+    //private float restTime = 0f;
     private const float restThreshold = 0.05f;
     private float ignoreDelayAfterRest = 3f;
+    private float kinematicDelayAfterRest = 5f;
 
     public void SetMass(float mass) => massOverride = mass;
     public void SetApplyImpulse(bool active) => applyImpulse = active;
+
     void Update()
     {
-        if (!hasBroken || lastHitPlayer == null) return;
+        if (!hasBroken) return;
 
         var rb = GetComponent<Rigidbody>();
         if (rb == null) return;
 
-        if (rb.linearVelocity.magnitude < restThreshold)
+        float velocity = rb.linearVelocity.magnitude;
 
+        if (velocity < restThreshold)
         {
-            restTime += Time.deltaTime;
+            if (!isAtRest)
+            {
+                isAtRest = true;
+                timeWhenStopped = Time.time;
+            }
 
-            if (restTime >= ignoreDelayAfterRest)
+            float timeSinceStop = Time.time - timeWhenStopped;
+
+            if (lastHitPlayer != null && timeSinceStop >= ignoreDelayAfterRest)
             {
                 DisablePlayerCollision();
+            }
+
+            if (!kinematicSet && timeSinceStop >= kinematicDelayAfterRest)
+            {
+                rb.isKinematic = true;
+                kinematicSet = true;
             }
         }
         else
         {
-            // Wenn sich das Teil wieder bewegt, Timer zurücksetzen
-            restTime = 0f;
+            isAtRest = false;
+            timeWhenStopped = -1f;
         }
     }
-
 
     public void Detach(float force, GameObject player = null, float delayAfterRest = 3f)
     {
@@ -70,8 +87,7 @@ public class BreakablePart : MonoBehaviour
         if (myCol != null && playerCol != null)
         {
             Physics.IgnoreCollision(myCol, playerCol, true);
-            lastHitPlayer = null; // aufräumen
+            lastHitPlayer = null;
         }
     }
-
 }

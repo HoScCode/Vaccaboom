@@ -7,6 +7,7 @@ public class DestructionSetupWindow : EditorWindow
     private float breakForce = 2f;
     private float partMass = 0.5f;
     private bool applyImpulse = true;
+    private float kinematicDelayAfterRest = 5f;
 
     [MenuItem("Tools/Destruction Setup Window")]
     public static void ShowWindow()
@@ -21,6 +22,7 @@ public class DestructionSetupWindow : EditorWindow
         breakForce = EditorGUILayout.FloatField("Break Force", breakForce);
         partMass = EditorGUILayout.FloatField("Part Mass", partMass);
         applyImpulse = EditorGUILayout.Toggle("Apply Impulse", applyImpulse);
+        kinematicDelayAfterRest = EditorGUILayout.FloatField("Kinematic Delay", kinematicDelayAfterRest);
 
         GUILayout.Space(10);
 
@@ -68,5 +70,10 @@ public class DestructionSetupWindow : EditorWindow
 
         Debug.Log("Reset completed.");
     }
+    public void SetKinematicDelay(float seconds)
+    {
+        kinematicDelayAfterRest = seconds;
+    }
+
 }
 #endif
