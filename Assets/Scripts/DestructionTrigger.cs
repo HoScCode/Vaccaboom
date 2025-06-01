@@ -3,7 +3,7 @@ using UnityEngine;
 public class DestructionTrigger : MonoBehaviour
 {
     public float breakForce = 2f;
-
+    public float delayAfterRest = 3f;
     void OnCollisionEnter(Collision collision)
     {
         if (!collision.gameObject.CompareTag("Player")) return;
@@ -14,7 +14,8 @@ public class DestructionTrigger : MonoBehaviour
             var part = hit.GetComponent<BreakablePart>();
             if (part != null)
             {
-                part.Detach(breakForce);
+                part.Detach(breakForce, collision.gameObject);
+
             }
         }
     }
