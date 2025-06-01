@@ -1,59 +1,72 @@
 #if UNITY_EDITOR
-using UnityEditor;
 using UnityEngine;
+using UnityEditor;
 
-public class DestructionSetup : MonoBehaviour
+public class DestructionSetupWindow : EditorWindow
 {
-    [MenuItem("Tools/Setup Destructible Object From Selection")]
-    static void Setup()
+    private float breakForce = 2f;
+    private float partMass = 0.5f;
+    private bool applyImpulse = true;
+
+    [MenuItem("Tools/Destruction Setup Window")]
+    public static void ShowWindow()
     {
-        foreach (GameObject selected in Selection.gameObjects)
+        GetWindow<DestructionSetupWindow>("Destruction Setup");
+    }
+
+    void OnGUI()
+    {
+        GUILayout.Label("Destruction Settings", EditorStyles.boldLabel);
+
+        breakForce = EditorGUILayout.FloatField("Break Force", breakForce);
+        partMass = EditorGUILayout.FloatField("Part Mass", partMass);
+        applyImpulse = EditorGUILayout.Toggle("Apply Impulse", applyImpulse);
+
+        GUILayout.Space(10);
+
+        if (GUILayout.Button("Apply to Selection"))
         {
-            Debug.Log($"Setting up destructible object: {selected.name}");
+            ApplySettingsToSelection();
+        }
 
-            // Root-Objekt vorbereiten
-            Rigidbody rb = selected.GetComponent<Rigidbody>();
-            if (rb == null) rb = selected.AddComponent<Rigidbody>();
-            rb.mass = 30f;
-            rb.interpolation = RigidbodyInterpolation.Interpolate;
-            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        if (GUILayout.Button("Reset Breakable Parts"))
+        {
+            ResetSelection();
+        }
+    }
 
-            // Dummy-Collider hinzufügen und unsichtbar machen
-            BoxCollider col = selected.GetComponent<BoxCollider>();
-            if (col == null) col = selected.AddComponent<BoxCollider>();
-            col.center = new Vector3(0, -9999f, 0);
-            col.size = new Vector3(0.1f, 0.1f, 0.1f);
-
-            // DestructionTrigger-Skript hinzufügen
-            if (selected.GetComponent<DestructionTrigger>() == null)
-                selected.AddComponent<DestructionTrigger>();
-
-            // Alle Kindobjekte durchgehen
-            foreach (Transform child in selected.GetComponentsInChildren<Transform>(true))
+    void ApplySettingsToSelection()
+    {
+        foreach (GameObject obj in Selection.gameObjects)
+        {
+            var parts = obj.GetComponentsInChildren<BreakablePart>(true);
+            foreach (var part in parts)
             {
-                if (child == selected.transform) continue;
-
-                // Nur Cube-Objekte bearbeiten
-                if (!child.name.StartsWith("Cube")) continue;
-
-                // Alle alten Rigidbody & Joints entfernen
-                var oldRb = child.GetComponent<Rigidbody>();
-                if (oldRb != null) DestroyImmediate(oldRb);
-
-                var oldFj = child.GetComponent<FixedJoint>();
-                if (oldFj != null) DestroyImmediate(oldFj);
-
-                // Collider setzen (falls nicht vorhanden)
-                if (child.GetComponent<Collider>() == null)
-                    child.gameObject.AddComponent<BoxCollider>();
-
-                // Breakable-Script hinzufügen
-                if (child.GetComponent<BreakablePart>() == null)
-                    child.gameObject.AddComponent<BreakablePart>();
+                part.breakForce = breakForce;
+                part.SetMass(partMass);
+                part.SetApplyImpulse(applyImpulse);
+                EditorUtility.SetDirty(part);
             }
         }
 
-        Debug.Log("Destructible setup complete for all selected objects.");
+        Debug.Log("Settings applied to selected objects.");
+    }
+
+    void ResetSelection()
+    {
+        foreach (GameObject obj in Selection.gameObjects)
+        {
+            var parts = obj.GetComponentsInChildren<BreakablePart>(true);
+            foreach (var part in parts)
+            {
+                part.breakForce = 0f;
+                part.SetMass(0f);
+                part.SetApplyImpulse(false);
+                EditorUtility.SetDirty(part);
+            }
+        }
+
+        Debug.Log("Reset completed.");
     }
 }
 #endif
