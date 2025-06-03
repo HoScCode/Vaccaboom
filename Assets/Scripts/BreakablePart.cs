@@ -5,6 +5,7 @@ public class BreakablePart : MonoBehaviour
     private float timeWhenStopped = -1f;
     private bool isAtRest = false;
     private bool kinematicSet = false;
+    public bool HasBroken => hasBroken;
 
     public float breakForce = 2f;
     private bool hasBroken = false;
@@ -20,7 +21,20 @@ public class BreakablePart : MonoBehaviour
 
     void Update()
     {
-        if (!hasBroken) return;
+        // Sicherheitszeit: Nicht sofort detachen nach Start
+        if (!hasBroken && Time.timeSinceLevelLoad < 0.2f)
+            return;
+
+        if (!hasBroken)
+        {
+            if (!HasIntactNeighbors())
+            {
+                Detach(breakForce);
+                return;
+            }
+
+            return;
+        }
 
         var rb = GetComponent<Rigidbody>();
         if (rb == null) return;
@@ -54,6 +68,7 @@ public class BreakablePart : MonoBehaviour
             timeWhenStopped = -1f;
         }
     }
+
 
     public void Detach(float force, GameObject player = null, float delayAfterRest = 3f)
     {
@@ -100,4 +115,21 @@ public class BreakablePart : MonoBehaviour
             lastHitPlayer = null;
         }
     }
+    private bool HasIntactNeighbors()
+    {
+        Collider[] hits = Physics.OverlapSphere(transform.position, 0.25f);
+        foreach (var col in hits)
+        {
+            if (col.gameObject == this.gameObject) continue;
+
+            BreakablePart other = col.GetComponent<BreakablePart>();
+            if (other != null && !other.hasBroken)
+            {
+                return true; // Noch ein ungebrochenes Nachbarstück gefunden
+            }
+        }
+
+        return false; // kein Nachbar trägt mehr → detach!
+    }
+
 }
