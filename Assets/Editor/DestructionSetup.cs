@@ -9,6 +9,9 @@ public class DestructionSetupWindow : EditorWindow
     private bool applyImpulse = true;
     private float kinematicDelayAfterRest = 5f;
 
+    private float baseValue = 100f;
+    private float destructionThreshold = 0.2f;
+
     [MenuItem("Tools/Destruction Setup Window")]
     public static void ShowWindow()
     {
@@ -23,6 +26,11 @@ public class DestructionSetupWindow : EditorWindow
         partMass = EditorGUILayout.FloatField("Part Mass", partMass);
         applyImpulse = EditorGUILayout.Toggle("Apply Impulse", applyImpulse);
         kinematicDelayAfterRest = EditorGUILayout.FloatField("Kinematic Delay", kinematicDelayAfterRest);
+
+        GUILayout.Space(5);
+        GUILayout.Label("Value & Scoring", EditorStyles.boldLabel);
+        baseValue = EditorGUILayout.FloatField("Base Value ($)", baseValue);
+        destructionThreshold = EditorGUILayout.Slider("Auto Detach Threshold", destructionThreshold, 0f, 1f);
 
         GUILayout.Space(10);
 
@@ -40,7 +48,6 @@ public class DestructionSetupWindow : EditorWindow
         {
             RemoveAllDestructionComponents();
         }
-
     }
 
     void ApplySettingsToSelection()
@@ -63,7 +70,6 @@ public class DestructionSetupWindow : EditorWindow
                 rootBox = root.AddComponent<BoxCollider>();
             }
 
-            // → BoxCollider verkleinern und verschieben
             rootBox.size = Vector3.one * 0.01f;
             rootBox.center = Vector3.one * 999f;
 
@@ -75,29 +81,31 @@ public class DestructionSetupWindow : EditorWindow
             trigger.breakForce = breakForce;
             trigger.delayAfterRest = kinematicDelayAfterRest;
 
+            // DestructibleObject hinzufügen und konfigurieren
+            DestructibleObject dObj = root.GetComponent<DestructibleObject>();
+            if (dObj == null)
+            {
+                dObj = root.AddComponent<DestructibleObject>();
+            }
+            dObj.SetBaseValue(baseValue);
+            dObj.SetAutoDestroyThreshold(destructionThreshold);
+
             EditorUtility.SetDirty(rootRb);
             EditorUtility.SetDirty(trigger);
+            EditorUtility.SetDirty(dObj);
 
-            
-            //  Teile-Setup
             foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
             {
                 if (!child.name.ToLower().Contains("cube")) continue;
 
                 var part = child.GetComponent<BreakablePart>();
                 if (part == null)
-                {
                     part = child.gameObject.AddComponent<BreakablePart>();
-                }
 
-                //  Entferne Rigidbody – darf nicht beim Start vorhanden sein
-                var existingRb = child.GetComponent<Rigidbody>();
-                if (existingRb != null)
-                {
-                    DestroyImmediate(existingRb);
-                }
+                var rb = child.GetComponent<Rigidbody>();
+                if (rb != null)
+                    DestroyImmediate(rb);
 
-                //  Collider prüfen oder setzen
                 if (child.GetComponent<Collider>() == null)
                 {
                     var meshCol = child.gameObject.AddComponent<MeshCollider>();
@@ -110,10 +118,9 @@ public class DestructionSetupWindow : EditorWindow
 
                 EditorUtility.SetDirty(part);
             }
-
         }
 
-        Debug.Log("Destruction setup applied to selection.");
+        Debug.Log(" Destruction setup applied to selection.");
     }
 
     void ResetSelection()
@@ -130,32 +137,25 @@ public class DestructionSetupWindow : EditorWindow
             }
         }
 
-        Debug.Log("Reset completed.");
-    }
-
-    public void SetKinematicDelay(float seconds)
-    {
-        kinematicDelayAfterRest = seconds;
+        Debug.Log(" Reset completed.");
     }
 
     void RemoveAllDestructionComponents()
     {
         foreach (GameObject root in Selection.gameObjects)
         {
-            // 🔹 Root: Trigger, Rigidbody, Collider (wenn MeshCollider)
             var trigger = root.GetComponent<DestructionTrigger>();
             if (trigger != null) DestroyImmediate(trigger);
+
+            var dObj = root.GetComponent<DestructibleObject>();
+            if (dObj != null) DestroyImmediate(dObj);
 
             var rootRb = root.GetComponent<Rigidbody>();
             if (rootRb != null) DestroyImmediate(rootRb);
 
             var rootCol = root.GetComponent<Collider>();
-            if (rootCol != null && rootCol is MeshCollider)
-            {
-                DestroyImmediate(rootCol);
-            }
+            if (rootCol != null && rootCol is MeshCollider) DestroyImmediate(rootCol);
 
-            // 🔹 Alle Children prüfen
             foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
             {
                 if (!child.name.ToLower().Contains("cube")) continue;
@@ -168,14 +168,11 @@ public class DestructionSetupWindow : EditorWindow
 
                 var col = child.GetComponent<Collider>();
                 if (col != null && col is MeshCollider)
-                {
                     DestroyImmediate(col);
-                }
             }
         }
 
-        Debug.Log("All destruction components removed from selection.");
+        Debug.Log(" All destruction components removed from selection.");
     }
-
 }
 #endif

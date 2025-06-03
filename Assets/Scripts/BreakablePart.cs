@@ -1,4 +1,6 @@
 using UnityEngine;
+using System.Collections.Generic;
+
 
 public class BreakablePart : MonoBehaviour
 {
@@ -19,20 +21,29 @@ public class BreakablePart : MonoBehaviour
     public void SetMass(float mass) => massOverride = mass;
     public void SetApplyImpulse(bool active) => applyImpulse = active;
 
+    //[SerializeField] private float neighborCheckRadius = 0.2f;
+    [SerializeField] private float orphanCheckInterval = 1.0f;
+    private float orphanCheckTimer = 0f;
+
+
     void Update()
     {
         // Sicherheitszeit: Nicht sofort detachen nach Start
         if (!hasBroken && Time.timeSinceLevelLoad < 0.2f)
             return;
 
-        if (!hasBroken)
+         if (!hasBroken)
         {
-            if (!HasIntactNeighbors())
+            orphanCheckTimer += Time.deltaTime;
+            if (orphanCheckTimer >= orphanCheckInterval)
             {
-                Detach(breakForce);
-                return;
+                orphanCheckTimer = 0f;
+                if (!HasIntactCluster())
+                {
+                    Detach(breakForce);
+                    return;
+                }
             }
-
             return;
         }
 
@@ -115,21 +126,47 @@ public class BreakablePart : MonoBehaviour
             lastHitPlayer = null;
         }
     }
-    private bool HasIntactNeighbors()
+    private bool HasIntactCluster()
     {
-        Collider[] hits = Physics.OverlapSphere(transform.position, 0.25f);
-        foreach (var col in hits)
-        {
-            if (col.gameObject == this.gameObject) continue;
+        var thisCollider = GetComponent<Collider>();
+        var hits = Physics.OverlapBox(transform.position, thisCollider.bounds.extents * 1.2f, Quaternion.identity);
 
-            BreakablePart other = col.GetComponent<BreakablePart>();
-            if (other != null && !other.hasBroken)
+        var visited = new HashSet<BreakablePart>();
+        var queue = new Queue<BreakablePart>();
+
+        queue.Enqueue(this);
+        visited.Add(this);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            var currentCollider = current.GetComponent<Collider>();
+            if (currentCollider == null) continue;
+
+            Collider[] neighbors = Physics.OverlapBox(current.transform.position, currentCollider.bounds.extents * 1.1f, Quaternion.identity);
+
+            foreach (var col in neighbors)
             {
-                return true; // Noch ein ungebrochenes Nachbarstück gefunden
+                if (col == thisCollider || !col.bounds.Intersects(currentCollider.bounds)) continue;
+
+                BreakablePart neighbor = col.GetComponent<BreakablePart>();
+                if (neighbor == null || visited.Contains(neighbor)) continue;
+
+                visited.Add(neighbor);
+
+                if (!neighbor.hasBroken)
+                {
+                    return true; // noch verbunden mit ungebrochener Struktur
+                }
+
+                queue.Enqueue(neighbor);
             }
         }
 
-        return false; // kein Nachbar trägt mehr → detach!
+        return false; // kein intakter Nachbar gefunden
     }
+
+
+
 
 }
