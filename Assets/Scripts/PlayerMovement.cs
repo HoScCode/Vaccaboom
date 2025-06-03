@@ -5,10 +5,13 @@ public class PlayerMovement : MonoBehaviour
 {
     private Vector3 movementDirection;
     public float minMoveSpeed = 2f;
-    public float maxMoveSpeed = 8f;
-    public float acceleration = 1f;
+    public float maxMoveSpeed = 15f;
+    public float acceleration = 0.3f;
     private float movementSpeed;
     private bool move;
+
+    public float delay = 0.5f;
+    private float currentDelay;
 
     private bool rotate;
     public float rotationSpeed = 70f;
@@ -41,31 +44,38 @@ public class PlayerMovement : MonoBehaviour
         if (rotate)
         {
             transform.Rotate(Vector3.up * Time.deltaTime * rotationSpeed);
+
+            currentDelay -= Time.deltaTime;
+            if (currentDelay < 0)
+            {
+                currentDelay = 0;
+            }
         }
     }
 
     void MovePressed()
     {
-        if(rotate)
+        if(rotate && currentDelay <= 0)
         {
             LeaveRotateMode();
         }
+
+        if (move)
+        {
+            Accelerate();
+        }
+        
     }
 
     void MoveAhead()
     {
-        transform.position += (movementDirection * Time.deltaTime * movementSpeed);
-        
-        movementSpeed += (acceleration * Time.deltaTime);
-        if (movementSpeed > maxMoveSpeed)
-        {
-            movementSpeed = maxMoveSpeed;
-        }
+        transform.position += (movementDirection * Time.deltaTime * movementSpeed);     
     }
 
     void EnterRotateMode()
     {
         StopMovement();
+        currentDelay = delay;
         rotate = true;
     }
 
@@ -73,6 +83,16 @@ public class PlayerMovement : MonoBehaviour
     {
         move = false;
         movementSpeed = 0f;
+    }
+
+    void Accelerate()
+    {
+        movementSpeed += acceleration;
+
+        if (movementSpeed > maxMoveSpeed)
+        {
+            movementSpeed = maxMoveSpeed;
+        }
     }
 
     void LeaveRotateMode()
