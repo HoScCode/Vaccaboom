@@ -19,11 +19,14 @@ public class PlayerMovement : MonoBehaviour
     public float recoilDistance = 0.15f;
 
     InputAction moveAction;
+
+    private Rigidbody rb;
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         moveAction = InputSystem.actions.FindAction("Move");
+        rb = GetComponent<Rigidbody>();
         EnterRotateMode();
     }
 
@@ -74,6 +77,7 @@ public class PlayerMovement : MonoBehaviour
 
     void EnterRotateMode()
     {
+        rb.constraints = RigidbodyConstraints.FreezePosition;
         StopMovement();
         currentDelay = delay;
         rotate = true;
@@ -97,6 +101,7 @@ public class PlayerMovement : MonoBehaviour
 
     void LeaveRotateMode()
     {
+        rb.constraints = RigidbodyConstraints.FreezeRotation;
         movementDirection = transform.forward;
         rotate = false;
         movementSpeed = minMoveSpeed;
