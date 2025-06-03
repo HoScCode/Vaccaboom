@@ -11,7 +11,6 @@ public class BreakablePart : MonoBehaviour
     private float massOverride = 0.5f;
     private bool applyImpulse = true;
     private GameObject lastHitPlayer = null;
-    //private float restTime = 0f;
     private const float restThreshold = 0.05f;
     private float ignoreDelayAfterRest = 3f;
     private float kinematicDelayAfterRest = 5f;
@@ -66,6 +65,8 @@ public class BreakablePart : MonoBehaviour
 
         transform.SetParent(null);
 
+        EnsureCollider();
+
         var rb = gameObject.AddComponent<Rigidbody>();
         rb.mass = massOverride > 0f ? massOverride : 0.5f;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
@@ -76,6 +77,15 @@ public class BreakablePart : MonoBehaviour
             float variation = Random.Range(0.8f, 1.2f);
             Vector3 direction = (Random.insideUnitSphere + transform.up * 0.5f).normalized;
             rb.AddForce(direction * force * variation, ForceMode.Impulse);
+        }
+    }
+
+    private void EnsureCollider()
+    {
+        if (GetComponent<Collider>() == null)
+        {
+            var meshCol = gameObject.AddComponent<MeshCollider>();
+            meshCol.convex = true;
         }
     }
 

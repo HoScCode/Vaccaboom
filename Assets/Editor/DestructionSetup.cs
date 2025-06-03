@@ -35,23 +35,85 @@ public class DestructionSetupWindow : EditorWindow
         {
             ResetSelection();
         }
+
+        if (GUILayout.Button("Remove All Destruction Components"))
+        {
+            RemoveAllDestructionComponents();
+        }
+
     }
 
     void ApplySettingsToSelection()
     {
-        foreach (GameObject obj in Selection.gameObjects)
+        foreach (GameObject root in Selection.gameObjects)
         {
-            var parts = obj.GetComponentsInChildren<BreakablePart>(true);
-            foreach (var part in parts)
+            // ▶ Root-Setup: Rigidbody, BoxCollider, DestructionTrigger
+            Rigidbody rootRb = root.GetComponent<Rigidbody>();
+            if (rootRb == null)
             {
+                rootRb = root.AddComponent<Rigidbody>();
+                rootRb.mass = 30f;
+                rootRb.interpolation = RigidbodyInterpolation.Interpolate;
+                rootRb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            }
+
+            BoxCollider rootBox = root.GetComponent<BoxCollider>();
+            if (rootBox == null)
+            {
+                rootBox = root.AddComponent<BoxCollider>();
+            }
+
+            // → BoxCollider verkleinern und verschieben
+            rootBox.size = Vector3.one * 0.01f;
+            rootBox.center = Vector3.one * 999f;
+
+            DestructionTrigger trigger = root.GetComponent<DestructionTrigger>();
+            if (trigger == null)
+            {
+                trigger = root.AddComponent<DestructionTrigger>();
+            }
+            trigger.breakForce = breakForce;
+            trigger.delayAfterRest = kinematicDelayAfterRest;
+
+            EditorUtility.SetDirty(rootRb);
+            EditorUtility.SetDirty(trigger);
+
+            
+            //  Teile-Setup
+            foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (!child.name.ToLower().Contains("cube")) continue;
+
+                var part = child.GetComponent<BreakablePart>();
+                if (part == null)
+                {
+                    part = child.gameObject.AddComponent<BreakablePart>();
+                }
+
+                //  Entferne Rigidbody – darf nicht beim Start vorhanden sein
+                var existingRb = child.GetComponent<Rigidbody>();
+                if (existingRb != null)
+                {
+                    DestroyImmediate(existingRb);
+                }
+
+                //  Collider prüfen oder setzen
+                if (child.GetComponent<Collider>() == null)
+                {
+                    var meshCol = child.gameObject.AddComponent<MeshCollider>();
+                    meshCol.convex = true;
+                }
+
                 part.breakForce = breakForce;
                 part.SetMass(partMass);
                 part.SetApplyImpulse(applyImpulse);
+
                 EditorUtility.SetDirty(part);
             }
+
         }
 
-        Debug.Log("Settings applied to selected objects.");
+        Debug.Log("Destruction setup applied to selection.");
     }
 
     void ResetSelection()
@@ -70,9 +132,49 @@ public class DestructionSetupWindow : EditorWindow
 
         Debug.Log("Reset completed.");
     }
+
     public void SetKinematicDelay(float seconds)
     {
         kinematicDelayAfterRest = seconds;
+    }
+
+    void RemoveAllDestructionComponents()
+    {
+        foreach (GameObject root in Selection.gameObjects)
+        {
+            // 🔹 Root: Trigger, Rigidbody, Collider (wenn MeshCollider)
+            var trigger = root.GetComponent<DestructionTrigger>();
+            if (trigger != null) DestroyImmediate(trigger);
+
+            var rootRb = root.GetComponent<Rigidbody>();
+            if (rootRb != null) DestroyImmediate(rootRb);
+
+            var rootCol = root.GetComponent<Collider>();
+            if (rootCol != null && rootCol is MeshCollider)
+            {
+                DestroyImmediate(rootCol);
+            }
+
+            // 🔹 Alle Children prüfen
+            foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (!child.name.ToLower().Contains("cube")) continue;
+
+                var part = child.GetComponent<BreakablePart>();
+                if (part != null) DestroyImmediate(part);
+
+                var rb = child.GetComponent<Rigidbody>();
+                if (rb != null) DestroyImmediate(rb);
+
+                var col = child.GetComponent<Collider>();
+                if (col != null && col is MeshCollider)
+                {
+                    DestroyImmediate(col);
+                }
+            }
+        }
+
+        Debug.Log("All destruction components removed from selection.");
     }
 
 }

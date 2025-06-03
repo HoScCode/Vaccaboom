@@ -14,7 +14,8 @@ public class DestructionTrigger : MonoBehaviour
             var part = hit.GetComponent<BreakablePart>();
             if (part != null)
             {
-                part.Detach(breakForce, collision.gameObject);
+                part.Detach(breakForce, collision.gameObject, delayAfterRest);
+
 
             }
         }
