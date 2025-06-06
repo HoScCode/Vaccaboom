@@ -9,6 +9,7 @@ public class PlayerMovement : MonoBehaviour
     public float acceleration = 0.3f;
     private float movementSpeed;
     private bool move;
+    private bool inputEnabled = true;
 
     public float delay = 0.5f;
     private float currentDelay;
@@ -34,12 +35,12 @@ public class PlayerMovement : MonoBehaviour
     void Update()
     {
         
-        if (moveAction.triggered)
+        if (moveAction.triggered && inputEnabled)
         {
             MovePressed();
         }
         
-        if (move)
+        if (move && inputEnabled)
         {
             MoveAhead();
         }
@@ -68,6 +69,13 @@ public class PlayerMovement : MonoBehaviour
             Accelerate();
         }
         
+    }
+
+    public void DisableMovement()
+    {
+        inputEnabled = false;
+        move = false;
+        rotate = false;
     }
 
     void MoveAhead()
@@ -122,6 +130,9 @@ public class PlayerMovement : MonoBehaviour
 
         transform.position -= movementDirection * recoilDistance;
 
-        EnterRotateMode();
+        if (inputEnabled)
+        {
+            EnterRotateMode();
+        }
     }
 }
