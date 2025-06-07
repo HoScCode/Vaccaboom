@@ -104,6 +104,8 @@ public class BreakablePart : MonoBehaviour
             Vector3 direction = (Random.insideUnitSphere + transform.up * 0.5f).normalized;
             rb.AddForce(direction * force * variation, ForceMode.Impulse);
         }
+        transform.root.GetComponent<DestructibleObject>()?.CheckAndAutoDestroy();
+
     }
 
     private void EnsureCollider()

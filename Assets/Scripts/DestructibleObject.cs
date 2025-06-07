@@ -13,7 +13,8 @@ public class DestructibleObject : MonoBehaviour
     private bool isDestroyed = false;
     public void SetBaseValue(float val) => baseValue = val;
     public void SetAutoDestroyThreshold(float val) => autoDestroyThreshold = val;
-    
+    private int lastAwardedScore = 0;
+
     void Awake()
     {
         parts = new List<BreakablePart>(GetComponentsInChildren<BreakablePart>());
@@ -41,18 +42,26 @@ public class DestructibleObject : MonoBehaviour
     {
         float destruction = GetDestructionRatio();
         float value = GetCurrentValue();
+        int currentScore = Mathf.RoundToInt(value);
 
-        Debug.Log($"Zerstörung: {(destruction * 100f):F1}% | $ Verdient: {value:F1} $");
+        int deltaScore = currentScore - lastAwardedScore;
+
+        if (deltaScore > 0)
+        {
+            GameManager.Instance?.ModifyScore(deltaScore);
+            lastAwardedScore = currentScore;
+            Debug.Log($"Score +{deltaScore} $ (Total: {currentScore} $)");
+        }
 
         if (!isDestroyed && (1f - destruction) <= autoDestroyThreshold)
         {
-            Debug.Log($" Fast alles zerstört – Rest fällt ab.");
+            Debug.Log($"Fast alles zerstört – Rest fällt ab.");
 
             foreach (var part in parts)
             {
                 if (!part.HasBroken)
                 {
-                    part.Detach(0f); // kein Impuls
+                    part.Detach(0f);
                 }
             }
 
